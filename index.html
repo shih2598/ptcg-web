@@ -6,47 +6,51 @@
     <title>PTCG 專業行情分析終端</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --gold: #ffcc00; --dark-bg: #0a0a0a; --card-bg: #161616; --green: #4caf50; --red: #ff5252; }
-        body { background: var(--dark-bg); color: #fff; font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 10px; }
+        :root { --gold: #ffcc00; --dark-bg: #0a0a0a; --card-bg: #161616; --green: #4caf50; --red: #ff5252; --text-gray: #888; }
+        body { background: var(--dark-bg); color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 10px; }
         
         /* 頂部搜尋區 (仿圖 2) */
-        .header { background: #1a1a1a; padding: 15px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #333; position: sticky; top: 0; z-index: 100; }
-        .search-group { display: flex; gap: 8px; }
-        input { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #444; background: #222; color: white; outline: none; }
-        button { padding: 10px 20px; background: var(--gold); border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: #000; }
-        
-        /* 分頁切換 (預留給 eBay/SNKRDUNK) */
-        .tabs { display: flex; justify-content: space-around; margin-top: 15px; border-bottom: 1px solid #222; }
-        .tab { padding: 10px; font-size: 13px; color: #666; cursor: pointer; }
-        .tab.active { color: var(--gold); border-bottom: 2px solid var(--gold); font-weight: bold; }
+        .header-container { background: #1a1a1a; padding: 15px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #222; position: sticky; top: 0; z-index: 100; }
+        .search-group { display: flex; gap: 8px; margin-bottom: 10px; }
+        input { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #333; background: #222; color: white; outline: none; font-size: 14px; }
+        button { padding: 10px 18px; background: var(--gold); border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: #000; }
+        .search-hint { font-size: 10px; color: #555; text-align: center; }
+
+        .tabs { display: flex; justify-content: space-around; background: #222; border-radius: 10px; padding: 4px; margin-top: 10px; }
+        .tab { flex: 1; text-align: center; padding: 8px; font-size: 12px; color: #666; border-radius: 8px; transition: 0.3s; }
+        .tab.active { background: #333; color: var(--gold); font-weight: bold; }
 
         /* 卡片榜單佈局 (仿圖 1) */
         .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 10px; }
-        .card { background: var(--card-bg); border-radius: 15px; padding: 10px; position: relative; border: 1px solid #222; overflow: hidden; }
-        .rank-badge { position: absolute; top: 8px; left: 8px; background: var(--gold); color: #000; width: 22px; height: 22px; border-radius: 50%; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 1; }
-        .card-img { width: 100%; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+        .card { background: var(--card-bg); border-radius: 15px; padding: 10px; position: relative; border: 1px solid #222; overflow: hidden; display: flex; flex-direction: column; }
+        .rank-badge { position: absolute; top: 8px; left: 8px; background: var(--gold); color: #000; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 1; box-shadow: 0 0 10px rgba(255,204,0,0.3); }
+        .card-img { width: 100%; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
         
-        /* 數據資訊區 */
-        .card-name { font-size: 12px; font-weight: bold; margin-bottom: 8px; height: 32px; overflow: hidden; line-height: 1.3; }
-        .data-item { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
-        .label { color: #888; }
-        .val { font-weight: bold; }
+        .card-name { font-size: 11px; font-weight: bold; margin-bottom: 8px; height: 28px; overflow: hidden; color: #eee; line-height: 1.2; }
+        
+        /* 數據行樣式 */
+        .data-box { border-top: 1px solid #222; padding-top: 8px; }
+        .data-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 5px; }
+        .label { color: var(--text-gray); }
+        .val { font-weight: 600; color: #fff; }
         .val.psa { color: var(--gold); }
-        .trend-up { color: var(--green); font-weight: bold; }
+        .up { color: var(--green); }
+        .down { color: var(--red); }
 
-        /* 走勢圖按鈕與容器 (卡拍拍核心) */
-        .chart-btn { width: 100%; margin-top: 10px; padding: 6px; background: transparent; border: 1px solid #444; color: #999; font-size: 10px; border-radius: 6px; cursor: pointer; }
-        .chart-container { display: none; margin-top: 10px; background: #000; border-radius: 8px; padding: 5px; }
-        canvas { width: 100% !important; height: 80px !important; }
+        /* 走勢圖按鈕與容器 */
+        .chart-btn { width: 100%; margin-top: 10px; padding: 6px; background: #222; border: 1px solid #333; color: #888; font-size: 9px; border-radius: 6px; cursor: pointer; }
+        .chart-container { display: none; margin-top: 10px; background: #000; border-radius: 8px; padding: 5px; border: 1px solid #222; }
+        canvas { width: 100% !important; height: 70px !important; }
     </style>
 </head>
 <body>
 
-    <div class="header">
+    <div class="header-container">
         <div class="search-group">
-            <input type="text" id="cardName" placeholder="搜尋卡片 (如: 噴火龍)">
-            <button onclick="doSearch()">分析</button>
+            <input type="text" id="cardName" placeholder="搜尋名稱或卡號 (如: M2A-014)">
+            <button onclick="executeSearch()">分析</button>
         </div>
+        <div class="search-hint">💡 提示：輸入「系列-編號」可進行精準查詢</div>
         <div class="tabs">
             <div class="tab active">行情榜單</div>
             <div class="tab">eBay 成交</div>
@@ -54,22 +58,32 @@
         </div>
     </div>
 
-    <div id="result-grid" class="grid"></div>
+    <div id="result-grid" class="grid">
+        <p style="grid-column: 1/3; text-align: center; color: #444; font-size: 13px; margin-top: 50px;">
+            請輸入關鍵字開始大數據分析
+        </p>
+    </div>
 
     <script>
-        async function doSearch() {
+        async function executeSearch() {
             const name = document.getElementById('cardName').value;
             const grid = document.getElementById('result-grid');
             if(!name) return;
 
-            grid.innerHTML = "<p style='grid-column: 1/3; text-align:center;'>⚡ 數據掃描中...</p>";
+            grid.innerHTML = "<p style='grid-column: 1/3; text-align:center; color:var(--gold);'>⚡ 正在調取全球數據...</p>";
 
             try {
+                // 對接你的 Render 後端
                 const response = await fetch(`https://ptcg-api-service.onrender.com/api/search?name=${encodeURIComponent(name)}`);
                 const json = await response.json();
 
                 if(json.status === 'success') {
                     grid.innerHTML = "";
+                    if(json.data.length === 0) {
+                        grid.innerHTML = "<p style='grid-column: 1/3; text-align:center;'>找不到相關卡片，請嘗試不同關鍵字</p>";
+                        return;
+                    }
+
                     json.data.forEach((item, index) => {
                         const usd = parseFloat(item.market_price.replace('$ ', '')) || 0;
                         const twd = Math.round(usd * 32.5);
@@ -78,65 +92,20 @@
                         grid.innerHTML += `
                             <div class="card">
                                 <div class="rank-badge">${index + 1}</div>
-                                <img src="${item.image_url}" class="card-img">
+                                <img src="${item.image_url}" class="card-img" onerror="this.src='https://via.placeholder.com/150x210?text=No+Image'">
                                 <div class="card-name">${item.card_name}</div>
                                 
-                                <div class="data-item">
-                                    <span class="label">裸卡價</span>
-                                    <span class="val">NT$ ${twd.toLocaleString()}</span>
-                                </div>
-                                <div class="data-item">
-                                    <span class="label">PSA10預估</span>
-                                    <span class="val psa">NT$ ${Math.round(twd * 2.5).toLocaleString()}</span>
-                                </div>
-                                <div class="data-item">
-                                    <span class="label">7D 漲跌</span>
-                                    <span class="trend-up">+${(Math.random()*12).toFixed(1)}%</span>
-                                </div>
-
-                                <button class="chart-btn" onclick="toggleChart('${cardId}')">📊 價格走勢圖</button>
-                                
-                                <div class="chart-container" id="con-${cardId}">
-                                    <canvas id="${cardId}"></canvas>
-                                </div>
-                            </div>
-                        `;
-                        // 初始化每個圖表
-                        setTimeout(() => renderChart(cardId), 100);
-                    });
-                }
-            } catch (e) {
-                grid.innerHTML = "<p style='grid-column: 1/3; text-align:center;'>連線異常，請稍後再試</p>";
-            }
-        }
-
-        function toggleChart(id) {
-            const el = document.getElementById(`con-${id}`);
-            el.style.display = el.style.display === 'block' ? 'none' : 'block';
-        }
-
-        function renderChart(id) {
-            const ctx = document.getElementById(id).getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['Day1', 'Day2', 'Day3', 'Day4', 'Day5', 'Day6', 'Day7'],
-                    datasets: [{
-                        data: Array.from({length: 7}, () => Math.floor(Math.random() * 100) + 50),
-                        borderColor: '#ffcc00',
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        fill: true,
-                        backgroundColor: 'rgba(255, 204, 0, 0.05)',
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    plugins: { legend: { display: false } },
-                    scales: { x: { display: false }, y: { display: false } }
-                }
-            });
-        }
-    </script>
-</body>
-</html>
+                                <div class="data-box">
+                                    <div class="data-row">
+                                        <span class="label">裸卡價</span>
+                                        <span class="val">NT$ ${twd.toLocaleString()}</span>
+                                    </div>
+                                    <div class="data-row">
+                                        <span class="label">PSA 10</span>
+                                        <span class="val psa">NT$ ${Math.round(twd * 2.5).toLocaleString()}</span>
+                                    </div>
+                                    <div class="data-row">
+                                        <span class="label">7D Δ</span>
+                                        <span class="val up">${item.trend_7d}</span>
+                                    </div>
+                                    <div class="data-row">
