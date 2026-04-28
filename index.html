@@ -3,65 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PTCG 專業行情監控</title>
+    <title>PTCG 日美行情監控</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --gold: #ffcc00; --dark-bg: #0a0a0a; --card-bg: #1a1a1a; }
+        :root { --gold: #ffcc00; --dark-bg: #0d0d0d; --card-bg: #1a1a1a; }
         body { background: var(--dark-bg); color: #fff; font-family: sans-serif; margin: 0; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 1000px; padding: 10px; }
-        .header { background: #222; padding: 15px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #333; position: sticky; top: 10px; z-index: 100; }
-        .version-selector { display: flex; gap: 8px; margin-bottom: 12px; }
-        .v-tag { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; background: #333; color: #888; }
-        .v-tag.active { background: var(--gold); color: #000; }
+        .header { background: #1e1e1e; padding: 15px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #333; position: sticky; top: 10px; z-index: 100; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+        .mode-tags { display: flex; gap: 8px; margin-bottom: 12px; }
+        .tag { padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; background: #333; color: #888; }
+        .tag.active { background: #ff4444; color: #fff; } /* 標示日版優先 */
         .search-group { display: flex; gap: 8px; }
-        input { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #444; background: #000; color: white; }
+        input { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #444; background: #000; color: white; outline: none; }
         button { padding: 10px 20px; background: var(--gold); border: none; border-radius: 12px; font-weight: bold; cursor: pointer; }
         .grid { display: grid; gap: 12px; grid-template-columns: repeat(2, 1fr); }
         @media (min-width: 768px) { .grid { grid-template-columns: repeat(4, 1fr); } }
-        .card { background: var(--card-bg); border-radius: 15px; padding: 12px; border: 1px solid #333; }
-        .card-img { width: 100%; border-radius: 10px; margin-bottom: 10px; background: #000; }
-        .card-name { font-size: 12px; font-weight: bold; margin-bottom: 10px; height: 35px; overflow: hidden; }
+        .card { background: var(--card-bg); border-radius: 15px; padding: 12px; border: 1px solid #222; }
+        .card-img { width: 100%; border-radius: 10px; margin-bottom: 10px; background: #000; transition: 0.3s; }
+        .card-id { font-size: 9px; color: var(--gold); margin-bottom: 4px; font-family: monospace; }
+        .card-name { font-size: 12px; font-weight: bold; margin-bottom: 8px; height: 35px; overflow: hidden; line-height: 1.2; }
         .data-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; }
+        .label { color: #888; }
         .psa-val { color: var(--gold); font-weight: bold; }
         .up { color: #4caf50; }
-        .chart-btn { width: 100%; margin-top: 10px; padding: 8px; background: #333; color: var(--gold); border: 1px solid #444; border-radius: 10px; font-size: 10px; }
-        .chart-con { display: none; margin-top: 10px; }
+        .chart-btn { width: 100%; margin-top: 10px; padding: 8px; background: #262626; color: #aaa; border: 1px solid #333; border-radius: 10px; font-size: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <div class="version-selector">
-                <div class="v-tag active" id="btn-tc" onclick="setVer('tc')">繁中版</div>
-                <div class="v-tag" id="btn-jp" onclick="setVer('jp')">日文版</div>
-                <div class="v-tag" id="btn-en" onclick="setVer('en')">英文版</div>
+            <div class="mode-tags">
+                <div class="tag active">日版資料庫</div>
+                <div class="tag">美版行情同步</div>
             </div>
             <div class="search-group">
-                <input type="text" id="cardName" placeholder="輸入編號 (如: M2A-014)">
+                <input type="text" id="cardName" placeholder="輸入編號 (如: sv4k-014) 或 英文名">
                 <button onclick="doSearch()">分析</button>
             </div>
         </div>
-        <div id="result-grid" class="grid"></div>
+        <div id="result-grid" class="grid">
+            <div style="grid-column: 1/-1; text-align: center; color: #444; padding: 100px 0;">
+                支援日版 ID 搜尋與英文關鍵字
+            </div>
+        </div>
     </div>
 
     <script>
-        let currentLang = 'tc';
-        function setVer(l) {
-            currentLang = l;
-            document.querySelectorAll('.v-tag').forEach(t => t.classList.remove('active'));
-            document.getElementById('btn-' + l).classList.add('active');
-            const ph = { 'tc': '輸入繁中編號 (M2A-014)', 'jp': '輸入日文編號 (如: 001/025)', 'en': '輸入英文名稱 (Pikachu)' };
-            document.getElementById('cardName').placeholder = ph[l];
-        }
-
         async function doSearch() {
             const query = document.getElementById('cardName').value;
             const grid = document.getElementById('result-grid');
             if(!query) return;
-            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:var(--gold);">⚡ 正在搜尋跨國市場數據...</div>';
+            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:var(--gold);">⚡ 正在調取日美跨境數據...</div>';
 
             try {
-                const res = await fetch(`https://ptcg-api-service.onrender.com/api/search?name=${encodeURIComponent(query)}&lang=${currentLang}`);
+                const res = await fetch(`https://ptcg-api-service.onrender.com/api/search?name=${encodeURIComponent(query)}`);
                 const result = await res.json();
                 if (result.status === "success") {
                     grid.innerHTML = "";
@@ -69,32 +64,17 @@
                         const price = Math.round((parseFloat(item.market_price.replace('$ ', '')) || 0) * 32.5);
                         grid.innerHTML += `
                             <div class="card">
-                                <img src="${item.image_url}" class="card-img">
+                                <div class="card-id">${item.id.toUpperCase()}</div>
+                                <img src="${item.image_url}" class="card-img" onerror="this.src='https://via.placeholder.com/150x210?text=No+Image'">
                                 <div class="card-name">${item.card_name}</div>
-                                <div class="data-row"><span style="color:#888">市場行情</span><span>NT$ ${price.toLocaleString()}</span></div>
-                                <div class="data-row"><span style="color:#888">PSA 10 預估</span><span class="psa-val">${item.psa10_price}</span></div>
-                                <div class="data-row"><span style="color:#888">7D 漲幅</span><span class="up">${item.trend_7d} ↑</span></div>
-                                <button class="chart-btn" onclick="toggleChart('${i}')">📊 查看走勢</button>
-                                <div class="chart-con" id="con-${i}"><canvas id="c-${i}" height="100"></canvas></div>
+                                <div class="data-row"><span class="label">市場行情</span><span>NT$ ${price.toLocaleString()}</span></div>
+                                <div class="data-row"><span class="label">PSA 10 預估</span><span class="psa-val">${item.psa10_price}</span></div>
+                                <div class="data-row"><span class="label">7D 漲幅</span><span class="up">${item.trend_7d} ↑</span></div>
+                                <button class="chart-btn">📊 查看詳細走勢</button>
                             </div>`;
                     });
                 }
-            } catch (e) { grid.innerHTML = "連線失敗"; }
-        }
-
-        function toggleChart(i) {
-            const box = document.getElementById("con-" + i);
-            box.style.display = (box.style.display === "block") ? "none" : "block";
-            if (box.style.display === "block") {
-                new Chart(document.getElementById("c-" + i).getContext('2d'), {
-                    type: 'line',
-                    data: {
-                        labels: ['','','','','','',''],
-                        datasets: [{ data: [70, 75, 80, 78, 85, 95, 100], borderColor: '#ffcc00', borderWidth: 2, pointRadius: 0, fill: true, backgroundColor: 'rgba(255, 204, 0, 0.1)', tension: 0.4 }]
-                    },
-                    options: { plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}} }
-                });
-            }
+            } catch (e) { grid.innerHTML = "連線失敗，請檢查後端狀態"; }
         }
     </script>
 </body>
