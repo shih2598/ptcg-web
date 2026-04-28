@@ -3,142 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PTCG 行情終端 - 專業監控</title>
+    <title>PTCG 專業行情監控</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --gold: #ffcc00; --dark-bg: #0a0a0a; --card-bg: #161616; --up-green: #4caf50; }
-        body { background: var(--dark-bg); color: #fff; font-family: sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; }
-        
-        /* 限制全螢幕最大寬度，避免電腦版過大 */
-        .container { width: 100%; max-width: 1000px; padding: 10px; box-sizing: border-box; }
-
-        .header { background: #1a1a1a; padding: 15px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #222; position: sticky; top: 10px; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .version-selector { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; }
-        .v-tag { padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; border: 1px solid #333; color: #888; white-space: nowrap; }
-        .v-tag.active { background: var(--gold); color: #000; border-color: var(--gold); }
-        
+        :root { --gold: #ffcc00; --dark-bg: #0a0a0a; --card-bg: #1a1a1a; }
+        body { background: var(--dark-bg); color: #fff; font-family: sans-serif; margin: 0; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 1000px; padding: 10px; }
+        .header { background: #222; padding: 15px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #333; position: sticky; top: 10px; z-index: 100; }
+        .version-selector { display: flex; gap: 8px; margin-bottom: 12px; }
+        .v-tag { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; background: #333; color: #888; }
+        .v-tag.active { background: var(--gold); color: #000; }
         .search-group { display: flex; gap: 8px; }
-        input { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #333; background: #222; color: white; outline: none; }
-        button { padding: 10px 18px; background: var(--gold); border: none; border-radius: 12px; font-weight: bold; cursor: pointer; }
-
-        /* 智慧網格控制 */
-        .grid { 
-            display: grid; 
-            gap: 12px; 
-            margin-top: 10px; 
-            grid-template-columns: repeat(2, 1fr); /* 預設手機一列2張 */
-        }
-
-        /* 當螢幕寬度超過 768px (平板/電腦) */
-        @media (min-width: 768px) {
-            .grid { grid-template-columns: repeat(4, 1fr); } /* 電腦一列4張 */
-        }
-
-        .card { background: var(--card-bg); border-radius: 15px; padding: 12px; border: 1px solid #222; position: relative; display: flex; flex-direction: column; }
-        .rank { position: absolute; top: 8px; left: 8px; background: var(--gold); color: #000; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 5; }
-        .card-img { width: 100%; border-radius: 10px; margin-bottom: 8px; aspect-ratio: 3/4; object-fit: contain; background: #222; }
-        .card-name { font-size: 12px; font-weight: bold; height: 34px; overflow: hidden; margin-bottom: 8px; line-height: 1.2; }
-        
-        .data-box { border-top: 1px solid #222; padding-top: 10px; flex-grow: 1; }
+        input { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #444; background: #000; color: white; }
+        button { padding: 10px 20px; background: var(--gold); border: none; border-radius: 12px; font-weight: bold; cursor: pointer; }
+        .grid { display: grid; gap: 12px; grid-template-columns: repeat(2, 1fr); }
+        @media (min-width: 768px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+        .card { background: var(--card-bg); border-radius: 15px; padding: 12px; border: 1px solid #333; }
+        .card-img { width: 100%; border-radius: 10px; margin-bottom: 10px; background: #000; }
+        .card-name { font-size: 12px; font-weight: bold; margin-bottom: 10px; height: 35px; overflow: hidden; }
         .data-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; }
-        .label { color: #888; }
-        .val { color: #fff; font-weight: 600; }
         .psa-val { color: var(--gold); font-weight: bold; }
-        .up { color: var(--up-green); }
-
-        .chart-btn { width: 100%; margin-top: 10px; padding: 8px; background: #262626; color: var(--gold); border: 1px solid #333; border-radius: 10px; font-size: 10px; cursor: pointer; }
-        .chart-con { display: none; margin-top: 8px; background: #000; border-radius: 8px; padding: 5px; border: 1px solid #111; }
+        .up { color: #4caf50; }
+        .chart-btn { width: 100%; margin-top: 10px; padding: 8px; background: #333; color: var(--gold); border: 1px solid #444; border-radius: 10px; font-size: 10px; }
+        .chart-con { display: none; margin-top: 10px; }
     </style>
 </head>
 <body>
-
     <div class="container">
         <div class="header">
             <div class="version-selector">
-                <div class="v-tag active" onclick="setVer('tc', this)">繁中版</div>
-                <div class="v-tag" onclick="setVer('jp', this)">日文版</div>
-                <div class="v-tag" onclick="setVer('en', this)">英文版</div>
+                <div class="v-tag active" id="btn-tc" onclick="setVer('tc')">繁中版</div>
+                <div class="v-tag" id="btn-jp" onclick="setVer('jp')">日文版</div>
+                <div class="v-tag" id="btn-en" onclick="setVer('en')">英文版</div>
             </div>
             <div class="search-group">
-                <input type="text" id="cardName" placeholder="搜尋 (如: Charizard 或 base1-4)">
+                <input type="text" id="cardName" placeholder="輸入編號 (如: M2A-014)">
                 <button onclick="doSearch()">分析</button>
             </div>
         </div>
-
-        <div id="result-grid" class="grid">
-            <div style="grid-column: 1/-1; text-align: center; color: #444; padding: 100px 0;">
-                輸入卡片名稱開啟監控
-            </div>
-        </div>
+        <div id="result-grid" class="grid"></div>
     </div>
 
     <script>
-        let lang = 'tc';
-        function setVer(l, el) {
-            lang = l;
+        let currentLang = 'tc';
+        function setVer(l) {
+            currentLang = l;
             document.querySelectorAll('.v-tag').forEach(t => t.classList.remove('active'));
-            el.classList.add('active');
-            if(document.getElementById('cardName').value) doSearch();
+            document.getElementById('btn-' + l).classList.add('active');
+            const ph = { 'tc': '輸入繁中編號 (M2A-014)', 'jp': '輸入日文編號 (如: 001/025)', 'en': '輸入英文名稱 (Pikachu)' };
+            document.getElementById('cardName').placeholder = ph[l];
         }
 
         async function doSearch() {
             const query = document.getElementById('cardName').value;
             const grid = document.getElementById('result-grid');
             if(!query) return;
-            
-            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:var(--gold);">⚡ 同步市場漲幅數據中...</div>';
+            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:var(--gold);">⚡ 正在搜尋跨國市場數據...</div>';
 
             try {
-                const res = await fetch(`https://ptcg-api-service.onrender.com/api/search?name=${encodeURIComponent(query)}&lang=${lang}`);
+                const res = await fetch(`https://ptcg-api-service.onrender.com/api/search?name=${encodeURIComponent(query)}&lang=${currentLang}`);
                 const result = await res.json();
                 if (result.status === "success") {
                     grid.innerHTML = "";
                     result.data.forEach((item, i) => {
                         const price = Math.round((parseFloat(item.market_price.replace('$ ', '')) || 0) * 32.5);
-                        const cid = `c-${i}`;
                         grid.innerHTML += `
                             <div class="card">
-                                <div class="rank">${i+1}</div>
-                                <img src="${item.image_url}" class="card-img" loading="lazy">
+                                <img src="${item.image_url}" class="card-img">
                                 <div class="card-name">${item.card_name}</div>
-                                <div class="data-box">
-                                    <div class="data-row"><span class="label">市場行情</span><span class="val">NT$ ${price.toLocaleString()}</span></div>
-                                    <div class="data-row"><span class="label">PSA 10 預估</span><span class="psa-val">${item.psa10_price}</span></div>
-                                    <div class="data-row"><span class="label">7D 漲幅</span><span class="val up">${item.trend_7d} ↑</span></div>
-                                    <div class="data-row"><span class="label">30D 漲幅</span><span class="val up">${item.trend_30d} ↑</span></div>
-                                </div>
-                                <button class="chart-btn" onclick="toggleChart('${cid}')">📉 漲跌趨勢圖</button>
-                                <div class="chart-con" id="con-${cid}"><canvas id="${cid}" height="100"></canvas></div>
+                                <div class="data-row"><span style="color:#888">市場行情</span><span>NT$ ${price.toLocaleString()}</span></div>
+                                <div class="data-row"><span style="color:#888">PSA 10 預估</span><span class="psa-val">${item.psa10_price}</span></div>
+                                <div class="data-row"><span style="color:#888">7D 漲幅</span><span class="up">${item.trend_7d} ↑</span></div>
+                                <button class="chart-btn" onclick="toggleChart('${i}')">📊 查看走勢</button>
+                                <div class="chart-con" id="con-${i}"><canvas id="c-${i}" height="100"></canvas></div>
                             </div>`;
                     });
                 }
             } catch (e) { grid.innerHTML = "連線失敗"; }
         }
 
-        function toggleChart(id) {
-            const box = document.getElementById("con-" + id);
+        function toggleChart(i) {
+            const box = document.getElementById("con-" + i);
             box.style.display = (box.style.display === "block") ? "none" : "block";
             if (box.style.display === "block") {
-                new Chart(document.getElementById(id).getContext('2d'), {
+                new Chart(document.getElementById("c-" + i).getContext('2d'), {
                     type: 'line',
                     data: {
                         labels: ['','','','','','',''],
-                        datasets: [{ 
-                            data: [70, 72, 85, 82, 90, 95, 100], 
-                            borderColor: '#ffcc00', 
-                            borderWidth: 2, 
-                            pointRadius: 0, 
-                            fill: true, 
-                            backgroundColor: 'rgba(255, 204, 0, 0.05)', 
-                            tension: 0.4 
-                        }]
+                        datasets: [{ data: [70, 75, 80, 78, 85, 95, 100], borderColor: '#ffcc00', borderWidth: 2, pointRadius: 0, fill: true, backgroundColor: 'rgba(255, 204, 0, 0.1)', tension: 0.4 }]
                     },
-                    options: { 
-                        plugins:{legend:{display:false}}, 
-                        scales:{x:{display:false},y:{display:false}},
-                        responsive: true,
-                        maintainAspectRatio: false
-                    }
+                    options: { plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}} }
                 });
             }
         }
