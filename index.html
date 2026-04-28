@@ -7,37 +7,30 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --gold: #ffcc00; --dark-bg: #0a0a0a; --card-bg: #161616; --tab-gray: #222; }
-        body { background: var(--dark-bg); color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 10px; }
-        
-        /* 頂部容器與卡拍拍風格版本切換 */
+        body { background: var(--dark-bg); color: #fff; font-family: -apple-system, sans-serif; margin: 0; padding: 10px; }
         .header { background: #1a1a1a; padding: 15px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #222; position: sticky; top: 0; z-index: 100; }
+        
+        /* 版本切換鈕樣式 */
         .version-selector { display: flex; gap: 8px; margin-bottom: 12px; }
-        .v-tag { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; border: 1px solid #333; color: #888; }
+        .v-tag { padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; border: 1px solid #333; color: #888; transition: 0.3s; }
         .v-tag.active { background: var(--gold); color: #000; border-color: var(--gold); }
         
         .search-group { display: flex; gap: 8px; margin-bottom: 8px; }
         input { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #333; background: #222; color: white; outline: none; font-size: 14px; }
-        button { padding: 10px 18px; background: var(--gold); border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: #000; transition: 0.2s; }
-        button:active { transform: scale(0.95); opacity: 0.8; }
+        button { padding: 10px 18px; background: var(--gold); border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: #000; }
 
-        /* 行情與成交切換標籤 */
-        .tabs { display: flex; background: var(--tab-gray); border-radius: 10px; padding: 4px; margin-top: 10px; }
-        .tab { flex: 1; text-align: center; padding: 8px; font-size: 12px; color: #666; border-radius: 8px; cursor: pointer; }
-        .tab.active { background: #333; color: var(--gold); font-weight: bold; }
-
-        /* 卡片網格 */
         .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 10px; }
-        .card { background: var(--card-bg); border-radius: 15px; padding: 10px; border: 1px solid #222; position: relative; transition: 0.3s; }
+        .card { background: var(--card-bg); border-radius: 15px; padding: 10px; border: 1px solid #222; position: relative; }
         .rank { position: absolute; top: 8px; left: 8px; background: var(--gold); color: #000; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 5; }
-        .card-img { width: 100%; border-radius: 10px; margin-bottom: 8px; aspect-ratio: 3/4; object-fit: cover; background: #222; }
-        .card-name { font-size: 11px; font-weight: bold; height: 32px; overflow: hidden; margin-bottom: 8px; color: #eee; line-height: 1.3; }
+        .card-img { width: 100%; border-radius: 10px; margin-bottom: 8px; background: #222; }
+        .card-name { font-size: 11px; font-weight: bold; height: 32px; overflow: hidden; margin-bottom: 8px; color: #eee; }
         
-        /* 數據區塊 */
+        /* 數據欄位增加 PSA 顯示 */
         .data-box { border-top: 1px solid #222; padding-top: 8px; }
         .data-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 4px; }
         .label { color: #888; }
         .val { color: #fff; font-weight: 600; }
-        .val.up { color: #4caf50; }
+        .psa-val { color: var(--gold); font-weight: bold; }
         
         .chart-btn { width: 100%; margin-top: 8px; padding: 6px; background: #222; color: var(--gold); border: 1px solid #333; border-radius: 8px; font-size: 9px; cursor: pointer; }
         .chart-con { display: none; margin-top: 8px; background: #000; border-radius: 8px; padding: 5px; border: 1px solid #222; }
@@ -46,21 +39,15 @@
 <body>
 
     <div class="header">
-        <div class="version-selector">
-            <div class="v-tag active">繁中版</div>
-            <div class="v-tag">日文版</div>
-            <div class="v-tag">英文版</div>
+        <div class="version-selector" id="versionGroup">
+            <div class="v-tag active" onclick="setVersion('tc', this)">繁中版</div>
+            <div class="v-tag" onclick="setVersion('jp', this)">日文版</div>
+            <div class="v-tag" onclick="setVersion('en', this)">英文版</div>
         </div>
 
         <div class="search-group">
-            <input type="text" id="cardName" placeholder="輸入名稱或編號 (如: Pikachu)">
+            <input type="text" id="cardName" placeholder="輸入名稱 (如: Charizard)">
             <button onclick="doSearch()">分析</button>
-        </div>
-        
-        <div class="tabs">
-            <div class="tab active">行情榜單</div>
-            <div class="tab">eBay 成交</div>
-            <div class="tab">近期趨勢</div>
         </div>
     </div>
 
@@ -71,63 +58,71 @@
     </div>
 
     <script>
-        async function doSearch() {
-            var name = document.getElementById('cardName').value.trim();
-            var grid = document.getElementById('result-grid');
-            
-            if (!name) {
-                alert("請輸入卡片名稱");
-                return;
-            }
+        let currentLang = 'tc'; // 預設繁中
 
-            grid.innerHTML = '<div style="grid-column:1/3; text-align:center; padding:40px;"><div style="color:var(--gold); margin-bottom:10px;">⚡</div>正在同步全球市場數據...</div>';
+        function setVersion(lang, el) {
+            currentLang = lang;
+            // 切換按鈕樣式
+            document.querySelectorAll('.v-tag').forEach(tag => tag.classList.remove('active'));
+            el.classList.add('active');
+            // 如果輸入框有字，切換時自動重新搜尋
+            if(document.getElementById('cardName').value) doSearch();
+        }
+
+        async function doSearch() {
+            const name = document.getElementById('cardName').value.trim();
+            const grid = document.getElementById('result-grid');
+            
+            if (!name) return;
+
+            grid.innerHTML = '<div style="grid-column:1/3; text-align:center; padding:40px;">⚡ 正在同步全球市場數據...</div>';
 
             try {
-                // 目前暫時對接美版資料庫
-                var apiUrl = "https://ptcg-api-service.onrender.com/api/search?name=" + encodeURIComponent(name);
-                var response = await fetch(apiUrl);
-                var result = await response.json();
+                // 將語言參數傳給後端
+                const apiUrl = `https://ptcg-api-service.onrender.com/api/search?name=${encodeURIComponent(name)}&lang=${currentLang}`;
+                const response = await fetch(apiUrl);
+                const result = await response.json();
 
                 if (result.status === "success") {
                     grid.innerHTML = ""; 
 
                     if (!result.data || result.data.length === 0) {
-                        grid.innerHTML = '<div style="grid-column:1/3; text-align:center; padding-top:20px;">未找到相關數據<br><small style="color:#555">提示：目前優先支援英文名搜尋</small></div>';
+                        grid.innerHTML = '<div style="grid-column:1/3; text-align:center; padding-top:20px;">未找到相關數據</div>';
                         return;
                     }
 
-                    result.data.forEach(function(item, i) {
-                        var price = Math.round((parseFloat(item.market_price.replace('$ ', '')) || 0) * 32.5);
-                        var cid = "chart-" + i;
+                    result.data.forEach((item, i) => {
+                        const price = Math.round((parseFloat(item.market_price.replace('$ ', '')) || 0) * 32.5);
+                        const cid = `chart-${i}`;
                         
-                        var html = '<div class="card">' +
-                            '<div class="rank">' + (i+1) + '</div>' +
-                            '<img src="' + item.image_url + '" class="card-img" loading="lazy">' +
-                            '<div class="card-name">' + item.card_name + '</div>' +
-                            '<div class="data-box">' +
-                                '<div class="data-row"><span class="label">市場行情</span><span class="val">NT$ ' + price.toLocaleString() + '</span></div>' +
-                                '<div class="data-row"><span class="label">7D 波動</span><span class="val up">' + item.trend_7d + ' ↑</span></div>' +
-                                '<div class="data-row"><span class="label">30D 波動</span><span class="val up">' + item.trend_30d + ' ↑</span></div>' +
-                            '</div>' +
-                            '<button class="chart-btn" onclick="toggleChart(\'' + cid + '\')">📈 價格趨勢圖</button>' +
-                            '<div class="chart-con" id="con-' + cid + '"><canvas id="' + cid + '" height="80"></canvas></div>' +
-                        '</div>';
-                        
+                        const html = `
+                            <div class="card">
+                                <div class="rank">${i+1}</div>
+                                <img src="${item.image_url}" class="card-img" loading="lazy">
+                                <div class="card-name">${item.card_name}</div>
+                                <div class="data-box">
+                                    <div class="data-row"><span class="label">裸卡行情</span><span class="val">NT$ ${price.toLocaleString()}</span></div>
+                                    <div class="data-row"><span class="label">PSA 10 預估</span><span class="psa-val">${item.psa10_price}</span></div>
+                                    <div class="data-row"><span class="label">24H 波動</span><span class="val" style="color:#4caf50">${item.trend_7d} ↑</span></div>
+                                </div>
+                                <button class="chart-btn" onclick="toggleChart('${cid}')">📈 價格趨勢圖</button>
+                                <div class="chart-con" id="con-${cid}"><canvas id="${cid}" height="80"></canvas></div>
+                            </div>`;
                         grid.innerHTML += html;
                     });
                 }
             } catch (err) {
-                grid.innerHTML = '<div style="grid-column:1/3; text-align:center; color:#ff5252;">❌ 連線異常<br><small>伺服器啟動中，請於 30 秒後重試</small></div>';
+                grid.innerHTML = '<div style="grid-column:1/3; text-align:center; color:#ff5252;">❌ 連線失敗</div>';
             }
         }
 
         function toggleChart(id) {
-            var box = document.getElementById("con-" + id);
-            var isVisible = (box.style.display === "block");
+            const box = document.getElementById("con-" + id);
+            const isVisible = (box.style.display === "block");
             box.style.display = isVisible ? "none" : "block";
             
             if (!isVisible) {
-                var ctx = document.getElementById(id).getContext('2d');
+                const ctx = document.getElementById(id).getContext('2d');
                 new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -145,8 +140,7 @@
                     options: { 
                         plugins:{legend:{display:false}}, 
                         scales:{x:{display:false},y:{display:false}},
-                        responsive: true,
-                        maintainAspectRatio: false
+                        responsive: true
                     }
                 });
             }
