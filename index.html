@@ -3,79 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PTCG 日美行情監控</title>
+    <title>PTCG 日美行情終端</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --gold: #ffcc00; --dark-bg: #0d0d0d; --card-bg: #1a1a1a; }
-        body { background: var(--dark-bg); color: #fff; font-family: sans-serif; margin: 0; display: flex; justify-content: center; }
-        .container { width: 100%; max-width: 1000px; padding: 10px; }
-        .header { background: #1e1e1e; padding: 15px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #333; position: sticky; top: 10px; z-index: 100; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+        :root { --gold: #ffcc00; --dark-bg: #0a0a0a; --card-bg: #161616; --up-green: #4caf50; --jp-red: #ff4444; }
+        body { background: var(--dark-bg); color: #fff; font-family: -apple-system, sans-serif; margin: 0; display: flex; justify-content: center; }
+        
+        .container { width: 100%; max-width: 1000px; padding: 10px; box-sizing: border-box; }
+
+        .header { background: #1a1a1a; padding: 15px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #222; position: sticky; top: 10px; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        
         .mode-tags { display: flex; gap: 8px; margin-bottom: 12px; }
-        .tag { padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; background: #333; color: #888; }
-        .tag.active { background: #ff4444; color: #fff; } /* 標示日版優先 */
+        .tag { padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: bold; background: #333; color: #888; border: 1px solid transparent; }
+        .tag.active { background: #222; color: #fff; border-color: var(--jp-red); border-width: 2px; }
+        
         .search-group { display: flex; gap: 8px; }
-        input { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #444; background: #000; color: white; outline: none; }
-        button { padding: 10px 20px; background: var(--gold); border: none; border-radius: 12px; font-weight: bold; cursor: pointer; }
-        .grid { display: grid; gap: 12px; grid-template-columns: repeat(2, 1fr); }
-        @media (min-width: 768px) { .grid { grid-template-columns: repeat(4, 1fr); } }
-        .card { background: var(--card-bg); border-radius: 15px; padding: 12px; border: 1px solid #222; }
-        .card-img { width: 100%; border-radius: 10px; margin-bottom: 10px; background: #000; transition: 0.3s; }
-        .card-id { font-size: 9px; color: var(--gold); margin-bottom: 4px; font-family: monospace; }
-        .card-name { font-size: 12px; font-weight: bold; margin-bottom: 8px; height: 35px; overflow: hidden; line-height: 1.2; }
+        input { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #333; background: #222; color: white; outline: none; font-size: 14px; }
+        button { padding: 10px 18px; background: var(--gold); border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: #000; }
+
+        .grid { 
+            display: grid; 
+            gap: 12px; 
+            margin-top: 10px; 
+            grid-template-columns: repeat(2, 1fr); 
+        }
+
+        @media (min-width: 768px) {
+            .grid { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        .card { background: var(--card-bg); border-radius: 15px; padding: 12px; border: 1px solid #222; position: relative; display: flex; flex-direction: column; transition: 0.2s; }
+        .card:hover { border-color: #444; }
+
+        .card-id { font-size: 10px; font-weight: bold; margin-bottom: 6px; font-family: monospace; letter-spacing: 0.5px; }
+        .card-img { width: 100%; border-radius: 10px; margin-bottom: 8px; aspect-ratio: 3/4; object-fit: contain; background: #000; }
+        .card-name { font-size: 12px; font-weight: bold; height: 34px; overflow: hidden; margin-bottom: 8px; line-height: 1.2; color: #eee; }
+        
+        .data-box { border-top: 1px solid #222; padding-top: 10px; flex-grow: 1; }
         .data-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; }
         .label { color: #888; }
+        .val { color: #fff; font-weight: 600; }
         .psa-val { color: var(--gold); font-weight: bold; }
-        .up { color: #4caf50; }
+        .up { color: var(--up-green); }
+
         .chart-btn { width: 100%; margin-top: 10px; padding: 8px; background: #262626; color: #aaa; border: 1px solid #333; border-radius: 10px; font-size: 10px; cursor: pointer; }
+        .chart-con { display: none; margin-top: 8px; background: #000; border-radius: 8px; padding: 5px; }
     </style>
 </head>
 <body>
+
     <div class="container">
         <div class="header">
             <div class="mode-tags">
-                <div class="tag active">日版資料庫</div>
-                <div class="tag">美版行情同步</div>
+                <div class="tag active">🇯🇵 日版資料優先</div>
+                <div class="tag">🇺🇸 美版行情同步</div>
             </div>
             <div class="search-group">
-                <input type="text" id="cardName" placeholder="輸入編號 (如: sv4k-014) 或 英文名">
+                <input type="text" id="cardName" placeholder="輸入編號 (如: sv4k-14) 或 英文名">
                 <button onclick="doSearch()">分析</button>
             </div>
         </div>
+
         <div id="result-grid" class="grid">
             <div style="grid-column: 1/-1; text-align: center; color: #444; padding: 100px 0;">
-                支援日版 ID 搜尋與英文關鍵字
+                請輸入日版編號或英文名稱開始監控
             </div>
         </div>
     </div>
 
     <script>
         async function doSearch() {
-            const query = document.getElementById('cardName').value;
+            const rawQuery = document.getElementById('cardName').value.trim();
             const grid = document.getElementById('result-grid');
-            if(!query) return;
-            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:var(--gold);">⚡ 正在調取日美跨境數據...</div>';
+            if(!rawQuery) return;
+            
+            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:var(--gold);">⚡ 正在同步跨境數據...</div>';
 
             try {
+                // 自動修復日版編號補零問題 (sv4k-014 -> sv4k-14)
+                let query = rawQuery;
+                if(rawQuery.includes('-')) {
+                    const parts = rawQuery.split('-');
+                    if(!isNaN(parts[1])) {
+                        query = `${parts[0].toLowerCase()}-${parseInt(parts[1])}`;
+                    }
+                }
+
                 const res = await fetch(`https://ptcg-api-service.onrender.com/api/search?name=${encodeURIComponent(query)}`);
                 const result = await res.json();
+                
                 if (result.status === "success") {
                     grid.innerHTML = "";
+                    if(result.data.length === 0) {
+                        grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:#888;">未找到對應資料，請檢查編號或試試英文名</div>';
+                        return;
+                    }
+
                     result.data.forEach((item, i) => {
                         const price = Math.round((parseFloat(item.market_price.replace('$ ', '')) || 0) * 32.5);
+                        const isJp = item.id.includes('jp') || item.id.match(/^s[0-9a-z]/);
+                        const cid = `c-${i}`;
+
                         grid.innerHTML += `
                             <div class="card">
-                                <div class="card-id">${item.id.toUpperCase()}</div>
-                                <img src="${item.image_url}" class="card-img" onerror="this.src='https://via.placeholder.com/150x210?text=No+Image'">
+                                <div class="card-id" style="color: ${isJp ? 'var(--jp-red)' : 'var(--gold)'}">${isJp ? '🇯🇵' : '🇺🇸'} ${item.id.toUpperCase()}</div>
+                                <img src="${item.image_url}" class="card-img" loading="lazy" onerror="this.src='https://via.placeholder.com/150x210?text=No+Image'">
                                 <div class="card-name">${item.card_name}</div>
-                                <div class="data-row"><span class="label">市場行情</span><span>NT$ ${price.toLocaleString()}</span></div>
-                                <div class="data-row"><span class="label">PSA 10 預估</span><span class="psa-val">${item.psa10_price}</span></div>
-                                <div class="data-row"><span class="label">7D 漲幅</span><span class="up">${item.trend_7d} ↑</span></div>
-                                <button class="chart-btn">📊 查看詳細走勢</button>
-                            </div>`;
-                    });
-                }
-            } catch (e) { grid.innerHTML = "連線失敗，請檢查後端狀態"; }
-        }
-    </script>
-</body>
-</html>
+                                <div class="data-box">
+                                    <div class="data-row"><span class="label">美版行情</span><span class="val">NT$ ${price.toLocaleString()}</span></div>
+                                    <div class="data-row"><span class="label">PSA 10 估值</span><span class="psa-val">${item.psa10_price}</span></div>
+                                    <div class="data-row"><span class="label">7D 漲幅</span><span class="val up">${item.trend_7d} ↑</span></div>
+                                    <div class="data-row
