@@ -18,14 +18,14 @@
         .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 10px; }
         .card { background: var(--card-bg); border-radius: 15px; padding: 10px; position: relative; border: 1px solid #222; display: flex; flex-direction: column; }
         .rank-badge { position: absolute; top: 8px; left: 8px; background: var(--gold); color: #000; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 1; }
-        .card-img { width: 100%; border-radius: 10px; margin-bottom: 10px; }
+        .card-img { width: 100%; border-radius: 10px; margin-bottom: 10px; min-height: 150px; background: #222; }
         .card-name { font-size: 11px; font-weight: bold; margin-bottom: 8px; height: 28px; overflow: hidden; color: #eee; }
         .data-box { border-top: 1px solid #222; padding-top: 8px; }
         .data-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 5px; }
         .label { color: var(--text-gray); }
         .val { font-weight: 600; color: #fff; }
         .psa { color: var(--gold); }
-        .chart-btn { width: 100%; margin-top: 10px; padding: 6px; background: #222; border: 1px solid #333; color: #888; font-size: 9px; border-radius: 6px; }
+        .chart-btn { width: 100%; margin-top: 10px; padding: 6px; background: #222; border: 1px solid #333; color: #888; font-size: 9px; border-radius: 6px; cursor: pointer; }
         .chart-con { display: none; margin-top: 10px; background: #000; border-radius: 8px; padding: 5px; border: 1px solid #222; }
     </style>
 </head>
@@ -34,8 +34,9 @@
     <div class="header-container">
         <div class="search-group">
             <input type="text" id="cardName" placeholder="搜尋名稱或卡號 (如: M2A-014)">
-            <button onclick="executeSearch()">分析</button>
+            <button id="searchBtn" onclick="executeSearch()">分析</button>
         </div>
+        <div style="font-size: 10px; color: #555; text-align: center;">💡 提示：輸入「系列-編號」可進行精準查詢</div>
         <div class="tabs">
             <div class="tab active">行情榜單</div>
             <div class="tab">eBay 成交</div>
@@ -43,76 +44,56 @@
         </div>
     </div>
 
-    <div id="result-grid" class="grid"></div>
+    <div id="result-grid" class="grid">
+        <div style="grid-column: 1/3; text-align: center; color: #444; margin-top: 50px;">請輸入卡片名稱開始分析</div>
+    </div>
 
     <script>
         async function executeSearch() {
-            var name = document.getElementById('cardName').value;
+            var nameInput = document.getElementById('cardName');
             var grid = document.getElementById('result-grid');
-            if(!name) return;
+            var name = nameInput.value.trim();
+            
+            if (!name) {
+                alert("請輸入卡片名稱");
+                return;
+            }
 
-            grid.innerHTML = "<p style='grid-column: 1/3; text-align:center;'>⚡ 正在分析數據...</p>";
+            // 步驟 1: 顯示連線狀態
+            grid.innerHTML = '<div style="grid-column: 1/3; text-align:center; padding: 20px;">⚡ 正在連線 Render 伺服器...</div>';
 
             try {
-                // 這裡改用最傳統的網址拼法，確保手機電腦都 100% 讀懂
-                var apiUrl = "https://ptcg-api-service.onrender.com/api/search?name=" + encodeURIComponent(name);
-                var response = await fetch(apiUrl);
-                var json = await response.json();
+                // 步驟 2: 抓取數據
+                var url = "https://ptcg-api-service.onrender.com/api/search?name=" + encodeURIComponent(name);
+                var response = await fetch(url);
+                var resData = await response.json();
 
-                if(json.status === 'success') {
-                    grid.innerHTML = "";
-                    json.data.forEach(function(item, index) {
-                        var usd = parseFloat(item.market_price.replace('$ ', '')) || 0;
-                        var twd = Math.round(usd * 32.5);
-                        var cardId = "chart-" + index;
+                if (resData.status === "success") {
+                    grid.innerHTML = ""; // 清空提示
+                    
+                    if (resData.data.length === 0) {
+                        grid.innerHTML = '<div style="grid-column: 1/3; text-align:center;">找不到卡片，請更換關鍵字</div>';
+                        return;
+                    }
 
-                        var html = '<div class="card">' +
-                                '<div class="rank-badge">' + (index + 1) + '</div>' +
-                                '<img src="' + item.image_url + '" class="card-img">' +
-                                '<div class="card-name">' + item.card_name + '</div>' +
-                                '<div class="data-box">' +
-                                    '<div class="data-row"><span class="label">裸卡價</span><span class="val">NT$ ' + twd.toLocaleString() + '</span></div>' +
-                                    '<div class="data-row"><span class="label">PSA 10</span><span class="val psa">NT$ ' + Math.round(twd * 2.5).toLocaleString() + '</span></div>' +
-                                    '<div class="data-row"><span class="label">7D Δ</span><span class="val" style="color:#4caf50">' + item.trend_7d + '</span></div>' +
-                                    '<div class="data-row"><span class="label">30D Δ</span><span class="val" style="color:#4caf50">' + item.trend_30d + '</span></div>' +
-                                '</div>' +
-                                '<button class="chart-btn" onclick="toggleChart(\'' + cardId + '\')">📉 查看價格走勢</button>' +
-                                '<div class="chart-con" id="con-' + cardId + '"><canvas id="' + cardId + '" height="70"></canvas></div>' +
-                            '</div>';
-                        grid.innerHTML += html;
-                        setTimeout(function(){ initChart(cardId); }, 200);
-                    });
-                }
-            } catch (e) {
-                grid.innerHTML = "<p style='grid-column: 1/3; text-align:center;'>❌ 連線失敗，請重試</p>";
-            }
-        }
+                    // 步驟 3: 產生卡片 HTML
+                    resData.data.forEach(function(item, index) {
+                        var priceUSD = parseFloat(item.market_price.replace('$ ', '')) || 0;
+                        var priceTWD = Math.round(priceUSD * 32.5);
+                        var cid = "chart-" + index;
 
-        function toggleChart(id) {
-            var el = document.getElementById("con-" + id);
-            el.style.display = (el.style.display === 'block') ? 'none' : 'block';
-        }
-
-        function initChart(id) {
-            var canvas = document.getElementById(id);
-            if(!canvas) return;
-            new Chart(canvas.getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: ['','','','','','',''],
-                    datasets: [{
-                        data: [65, 59, 80, 81, 56, 55, 70],
-                        borderColor: '#ffcc00',
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        fill: true,
-                        backgroundColor: 'rgba(255, 204, 0, 0.1)',
-                        tension: 0.4
-                    }]
-                },
-                options: { plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
-            });
-        }
-    </script>
-</body>
-</html>
+                        var cardHtml = '<div class="card">' +
+                            '<div class="rank-badge">' + (index + 1) + '</div>' +
+                            '<img src="' + item.image_url + '" class="card-img">' +
+                            '<div class="card-name">' + item.card_name + '</div>' +
+                            '<div class="data-box">' +
+                                '<div class="data-row"><span class="label">裸卡價</span><span class="val">NT$ ' + priceTWD.toLocaleString() + '</span></div>' +
+                                '<div class="data-row"><span class="label">PSA 10</span><span class="val psa">NT$ ' + Math.round(priceTWD * 2.5).toLocaleString() + '</span></div>' +
+                                '<div class="data-row"><span class="label">7D Δ</span><span class="val" style="color:#4caf50">' + item.trend_7d + '</span></div>' +
+                                '<div class="data-row"><span class="label">30D Δ</span><span class="val" style="color:#4caf50">' + item.trend_30d + '</span></div>' +
+                            '</div>' +
+                            '<button class="chart-btn" onclick="toggleChart(\'' + cid + '\')">📉 查看價格走勢</button>' +
+                            '<div class="chart-con" id="con-' + cid + '"><canvas id="' + cid + '" height="70"></canvas></div>' +
+                        '</div>';
+                        
+                        grid.innerHTML += cardHtml;
