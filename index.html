@@ -2,76 +2,70 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>PTCG 專業行情監控 - 日/台專用版</title>
+    <title>PTCG 全圖鑑行情終端</title>
     <style>
-        :root { --gold: #ffcc00; --bg: #0d0d0d; --panel: #1a1a1a; --cyan: #00f2ff; }
+        :root { --gold: #ffcc00; --bg: #0a0a0a; --panel: #1a1a1a; --cyan: #00f2ff; }
         body { background: var(--bg); color: white; font-family: sans-serif; padding: 20px; }
-        .search-box { max-width: 600px; margin: 40px auto; text-align: center; background: var(--panel); padding: 30px; border-radius: 20px; border: 1px solid #333; }
-        input { width: 70%; padding: 15px; border-radius: 12px; border: 1px solid #444; background: #000; color: white; font-size: 18px; outline: none; }
+        .search-area { max-width: 600px; margin: 40px auto; text-align: center; }
+        input { width: 70%; padding: 15px; border-radius: 12px; border: 1px solid #333; background: #000; color: white; font-size: 18px; }
         button { padding: 15px 30px; background: var(--gold); border: none; border-radius: 12px; font-weight: bold; cursor: pointer; }
-        .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
-        .card { background: var(--panel); border-radius: 15px; padding: 15px; border: 1px solid #222; }
-        .img-container { width: 100%; aspect-ratio: 0.717; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+        .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+        .card { background: var(--panel); border-radius: 20px; padding: 15px; border: 1px solid #222; }
+        .img-box { width: 100%; aspect-ratio: 0.717; background: #000; border-radius: 10px; overflow: hidden; }
         .card-img { width: 100%; height: 100%; object-fit: cover; }
-        .price-tag { background: #000; padding: 10px; border-radius: 8px; margin-top: 10px; border-left: 4px solid var(--gold); }
+        .price-box { background: #000; padding: 10px; border-radius: 10px; margin-top: 10px; border-left: 4px solid var(--gold); }
     </style>
 </head>
 <body>
 
-<div class="search-box">
-    <h2 style="color:var(--gold)">PTCG 數據終端</h2>
-    <p style="font-size:12px; color:#888;">支援編號 (sv4k-014) 或 中文名 (需在對照表內)</p>
-    <input type="text" id="q" placeholder="例如: sv4k-014">
-    <button onclick="smartSearch()">分析數據</button>
+<div class="search-area">
+    <h2 style="color:var(--gold)">PTCG 全圖鑑專業檢索</h2>
+    <input type="text" id="q" placeholder="輸入編號 (如 sv4k-014) 或 英文名">
+    <button onclick="search()">搜尋</button>
 </div>
 
 <div id="grid" class="grid"></div>
 
 <script>
-    // 擴充對照表：確保打中文能動
-    const CN_MAP = {
-        "炭小侍": "sv4k-014",
-        "噴火龍": "sv4k-085",
-        "小火龍": "sv2p-010",
-        "夢幻": "sv2a-151",
-        "水箭龜": "sv2a-009"
-    };
+    function getTwImg(fullId, num) {
+        // 自動轉換：sv4k-14 -> SV4K_014.png
+        const prefix = fullId.split('-')[0].toUpperCase();
+        const formattedNum = num.toString().padStart(3, '0');
+        return `https://asia.pokemon-card.com/tw/card-img/pokemon/${prefix}_${formattedNum}.png`;
+    }
 
-    function smartSearch() {
-        let val = document.getElementById('q').value.trim().toLowerCase();
+    async function search() {
+        const val = document.getElementById('q').value.trim();
         const grid = document.getElementById('grid');
-        grid.innerHTML = "🔍 檢索中...";
+        grid.innerHTML = "🔍 正在從全球資料庫調取全圖鑑數據...";
 
-        // 1. 處理中文轉編號
-        if (CN_MAP[val]) val = CN_MAP[val];
+        try {
+            const res = await fetch(`https://ptcg-api-service.onrender.com/api/search?name=${encodeURIComponent(val)}`);
+            const data = await res.json();
+            grid.innerHTML = "";
 
-        // 2. 判定是否為標準編號格式 (如 sv4k-014)
-        if (val.includes('-')) {
-            const parts = val.split('-');
-            const prefix = parts[0].toUpperCase();
-            const num = parts[1].padStart(3, '0');
-            
-            // 直接拼接台版官網路徑，繞過破碎的 API 搜尋
-            const imgUrl = `https://asia.pokemon-card.com/tw/card-img/pokemon/${prefix}_${num}.png`;
-            
-            grid.innerHTML = `
-                <div class="card">
-                    <div style="color:var(--cyan); font-weight:bold; margin-bottom:8px;">${prefix}-${num}</div>
-                    <div class="img-container">
-                        <img src="${imgUrl}" class="card-img" onerror="this.src='https://via.placeholder.com/300x420?text=No+Image+Found'">
-                    </div>
-                    <div class="price-tag">
-                        <div style="font-size:11px; color:#666;">日/台版預估行情</div>
-                        <div style="font-size:20px; font-weight:bold; color:var(--gold);">查價中...</div>
-                    </div>
-                    <div style="margin-top:10px; font-size:12px; color:#555;">*此為官網即時重定向數據</div>
-                </div>
-            `;
-            
-            // 此處可以再額外發送 fetch 去抓全球 PSA 價格，但不影響圖片顯示
-        } else {
-            grid.innerHTML = "請輸入正確的編號格式，例如 sv4k-014";
-        }
+            if(data.status === "success" && data.data.length > 0) {
+                data.data.forEach(item => {
+                    const twImg = getTwImg(item.id, item.number);
+                    grid.innerHTML += `
+                        <div class="card">
+                            <div style="color:var(--cyan); font-size:12px;">${item.id.toUpperCase()}</div>
+                            <div class="img-box">
+                                <img src="${twImg}" class="card-img" onerror="this.src='${item.image_en}';">
+                            </div>
+                            <div style="font-weight:bold; margin: 10px 0;">${item.en_name}</div>
+                            <div class="price-box">
+                                <div style="font-size:11px; color:#666;">日/台版預估行情</div>
+                                <div style="font-size:20px; font-weight:bold; color:var(--gold);">NT$ ${item.twd_price.toLocaleString()}</div>
+                                <div style="font-size:11px; color:var(--cyan); margin-top:5px;">PSA 10 參考: NT$ ${item.psa10_ref.toLocaleString()}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                grid.innerHTML = "❌ 找不到卡片，請確認編號是否正確";
+            }
+        } catch(e) { grid.innerHTML = "連線失敗"; }
     }
 </script>
 </body>
