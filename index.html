@@ -3,106 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PTCG 日版專業終端</title>
+    <title>PTCG 日版專業數據終端</title>
     <style>
-        :root { --gold: #ffcc00; --bg: #050505; --card-bg: rgba(30, 30, 30, 0.6); --accent: #00f2ff; }
-        body { background: var(--bg); color: white; font-family: 'PingFang TC', sans-serif; margin: 0; padding: 15px; }
-        .container { width: 100%; max-width: 1200px; margin: 0 auto; }
-        
-        /* 頂部搜尋欄 */
-        .search-wrapper { 
-            background: linear-gradient(145deg, #1a1a1a, #000); 
-            padding: 30px; border-radius: 25px; border: 1px solid #333;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8); margin-bottom: 30px;
-        }
-        .title { font-size: 24px; font-weight: 800; margin-bottom: 15px; color: var(--gold); text-align: center; letter-spacing: 2px; }
-        .input-box { display: flex; gap: 10px; background: #000; padding: 5px; border-radius: 15px; border: 1px solid #444; }
-        input { flex: 1; background: transparent; border: none; color: white; padding: 15px; font-size: 18px; outline: none; }
-        button { background: var(--gold); border: none; padding: 0 30px; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:hover { opacity: 0.8; transform: translateY(-2px); }
-
-        /* 卡片網格 */
-        .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-        
-        .card { 
-            background: var(--card-bg); backdrop-filter: blur(10px); border-radius: 20px; 
-            padding: 15px; border: 1px solid #333; transition: 0.4s; position: relative; overflow: hidden;
-        }
-        .card:hover { border-color: var(--accent); transform: translateY(-10px); box-shadow: 0 0 20px rgba(0, 242, 255, 0.2); }
-        
-        .card-id { font-size: 12px; font-family: monospace; color: var(--accent); margin-bottom: 10px; }
-        .card-img-wrap { width: 100%; position: relative; margin-bottom: 15px; transition: 0.3s; }
-        .card-img { width: 100%; border-radius: 12px; display: block; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
-        
-        .card-info { padding: 5px; }
-        .card-name { font-size: 16px; font-weight: bold; margin-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
-        .price-tag { background: rgba(255, 204, 0, 0.1); border-radius: 8px; padding: 8px; margin-bottom: 8px; }
-        .price-label { font-size: 10px; color: #aaa; text-transform: uppercase; }
-        .price-value { font-size: 18px; color: #fff; font-weight: 800; display: block; }
-        
-        .psa-tag { background: rgba(0, 242, 255, 0.1); border-radius: 8px; padding: 8px; }
-        .psa-value { font-size: 16px; color: var(--accent); font-weight: 800; display: block; }
-
-        .loading { text-align: center; padding: 50px; color: var(--gold); font-weight: bold; letter-spacing: 2px; }
+        :root { --gold: #ffcc00; --bg: #0a0a0a; --panel: #161616; --cyan: #00f2ff; }
+        body { background: var(--bg); color: white; font-family: 'PingFang TC', sans-serif; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .search-area { background: var(--panel); padding: 30px; border-radius: 20px; border: 1px solid #333; margin-bottom: 30px; }
+        .input-group { display: flex; gap: 10px; margin-top: 15px; }
+        input { flex: 1; padding: 15px; border-radius: 10px; border: 1px solid #444; background: #000; color: white; font-size: 16px; outline: none; }
+        button { background: var(--gold); border: none; padding: 0 25px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+        .card { background: var(--panel); border-radius: 15px; padding: 20px; border: 1px solid #222; text-align: center; }
+        .card-img { width: 100%; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .price-info { background: #000; padding: 12px; border-radius: 10px; margin-top: 10px; text-align: left; }
+        .label { color: #888; font-size: 12px; }
+        .value { display: block; font-size: 18px; font-weight: 800; color: var(--gold); }
     </style>
 </head>
 <body>
-
     <div class="container">
-        <div class="search-wrapper">
-            <div class="title">PTCG 日版行情監控終端</div>
-            <div class="input-box">
-                <input type="text" id="cardName" placeholder="輸入日版編號 (例如: SV4K-014)">
+        <div class="search-area">
+            <div style="font-size: 12px; color: var(--cyan); letter-spacing: 1px;">JP VERSION ONLY / 日版專用模式</div>
+            <div style="font-size: 24px; font-weight: 800; margin-top: 5px;">PTCG 專業數據分析</div>
+            <div class="input-group">
+                <input type="text" id="query" placeholder="輸入編號 (例如: SV4K-014)">
                 <button onclick="doSearch()">分析行情</button>
             </div>
         </div>
-
-        <div id="result-grid" class="grid">
-            </div>
+        <div id="result-grid" class="grid"></div>
     </div>
-
     <script>
         async function doSearch() {
-            const query = document.getElementById('cardName').value.trim();
+            const q = document.getElementById('query').value.trim();
             const grid = document.getElementById('result-grid');
-            if(!query) return;
-
-            grid.innerHTML = '<div class="loading">⚡ 正在檢索日版資料庫中...</div>';
-
+            if(!q) return;
+            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:var(--gold);">⚡ 正在精準抓取日版資料...</div>';
             try {
-                const res = await fetch(`https://ptcg-api-service.onrender.com/api/search?name=${encodeURIComponent(query)}`);
+                const res = await fetch(`https://ptcg-api-service.onrender.com/api/search?name=${encodeURIComponent(q)}`);
                 const result = await res.json();
-                
-                if (result.status === "success" && result.data.length > 0) {
-                    grid.innerHTML = "";
-                    result.data.forEach(item => {
-                        grid.innerHTML += `
-                            <div class="card">
-                                <div class="card-id">${item.id}</div>
-                                <div class="card-img-wrap">
-                                    <img src="${item.image_url}" class="card-img" loading="lazy">
-                                </div>
-                                <div class="card-info">
-                                    <div class="card-name">${item.card_name}</div>
-                                    <div class="price-tag">
-                                        <span class="price-label">預估市價</span>
-                                        <span class="price-value">${item.market_price}</span>
-                                    </div>
-                                    <div class="psa-tag">
-                                        <span class="price-label">PSA 10 參考</span>
-                                        <span class="psa-value">${item.psa10_price}</span>
-                                    </div>
-                                    <div style="font-size: 10px; color: #444; margin-top: 10px;">${item.set_name}</div>
-                                </div>
-                            </div>`;
-                    });
-                } else {
-                    grid.innerHTML = '<div class="loading" style="color:#666">查無結果，請確認編號格式。</div>';
+                grid.innerHTML = "";
+                if(result.data.length === 0) {
+                    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#666;">查無此編號，請確保格式為 系列-編號</div>';
+                    return;
                 }
-            } catch (e) {
-                grid.innerHTML = '<div class="loading" style="color:red">連線失敗，請檢查 Render 服務。</div>';
-            }
+                result.data.forEach(item => {
+                    grid.innerHTML += `
+                        <div class="card">
+                            <div style="font-size:11px; color:var(--cyan); margin-bottom:10px; font-weight:bold;">${item.id}</div>
+                            <img src="${item.image_url}" class="card-img">
+                            <div style="font-weight:bold; font-size:16px; margin-bottom:5px;">${item.card_name}</div>
+                            <div style="font-size:12px; color:#666; margin-bottom:15px;">${item.rarity}</div>
+                            <div class="price-info">
+                                <span class="label">預估市場行情</span>
+                                <span class="value">${item.market_price}</span>
+                                <div style="margin-top:8px; border-top:1px solid #222; padding-top:8px;">
+                                    <span class="label">PSA 10 參考價值</span>
+                                    <span style="color:var(--cyan); font-weight:bold; display:block;">${item.psa10}</span>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+            } catch (e) { grid.innerHTML = '連線失敗'; }
         }
     </script>
 </body>
