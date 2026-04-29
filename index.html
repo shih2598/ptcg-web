@@ -3,65 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PTCG 日版數據監控</title>
+    <title>PTCG 日版數據終端</title>
     <style>
-        :root { --gold: #ffcc00; --bg: #050505; --panel: #1a1a1a; --cyan: #00f2ff; }
+        :root { --gold: #ffcc00; --bg: #0d0d0d; --panel: #1a1a1a; --cyan: #00f2ff; }
         body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; padding: 15px; }
-        .container { max-width: 900px; margin: 0 auto; }
-        .search-box { 
-            background: var(--panel); padding: 30px; border-radius: 20px; 
-            border: 1px solid #333; margin-bottom: 25px; text-align: center;
-        }
-        .input-wrap { display: flex; gap: 10px; margin-top: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .search-area { background: var(--panel); padding: 30px; border-radius: 20px; border: 1px solid #333; margin-bottom: 25px; text-align: center; }
+        .input-group { display: flex; gap: 10px; margin-top: 20px; }
         input { flex: 1; padding: 15px; border-radius: 12px; border: 1px solid #444; background: #000; color: white; font-size: 18px; outline: none; }
         button { background: var(--gold); border: none; padding: 0 30px; border-radius: 12px; font-weight: bold; cursor: pointer; }
-        .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+        .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
         .card { background: var(--panel); border-radius: 20px; padding: 20px; border: 1px solid #222; }
-        .card-img { width: 100%; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.5); }
-        .price-row { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid #333; }
+        .card-id { color: var(--cyan); font-family: monospace; font-weight: bold; margin-bottom: 10px; font-size: 14px; }
+        .card-img { width: 100%; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        .price-box { background: #000; padding: 15px; border-radius: 12px; }
+        .price-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
         .label { color: #888; font-size: 12px; }
-        .val { font-weight: bold; color: var(--gold); }
+        .val { font-weight: bold; color: var(--gold); font-size: 18px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="search-box">
-            <div style="font-size: 11px; color: var(--cyan);">JP DIRECT ACCESS / 專業級日版檢索</div>
-            <div class="input-wrap">
-                <input type="text" id="q" placeholder="請輸入編號 (如: sv4k-014)">
-                <button onclick="doSearch()">分析數據</button>
+        <div class="search-area">
+            <div style="font-size: 11px; color: var(--cyan); letter-spacing: 2px;">JP VERSION / 專業日版數據模式</div>
+            <div class="input-group">
+                <input type="text" id="query" placeholder="輸入編號 (如: sv4k-014)">
+                <button onclick="doSearch()">分析行情</button>
             </div>
         </div>
-        <div id="grid" class="grid"></div>
+        <div id="result-grid" class="grid"></div>
     </div>
     <script>
         async function doSearch() {
-            const val = document.getElementById('q').value.trim();
-            const grid = document.getElementById('grid');
-            if(!val) return;
+            const q = document.getElementById('query').value.trim();
+            const grid = document.getElementById('result-grid');
+            if(!q) return;
             grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:var(--gold);">⚡ 正在連線日版資料庫...</div>';
             try {
-                const res = await fetch(`https://ptcg-api-service.onrender.com/api/search?name=${encodeURIComponent(val)}`);
+                const res = await fetch(`https://ptcg-api-service.onrender.com/api/search?name=${encodeURIComponent(q)}`);
                 const data = await res.json();
                 grid.innerHTML = "";
                 if(data.status === "success" && data.data.length > 0) {
                     data.data.forEach(item => {
                         grid.innerHTML += `
                             <div class="card">
-                                <div style="font-size:10px; color:var(--cyan); margin-bottom:10px;">${item.id}</div>
+                                <div class="card-id">${item.id}</div>
                                 <img src="${item.image_url}" class="card-img">
-                                <div style="font-weight:bold; font-size:16px;">${item.card_name}</div>
-                                <div style="font-size:12px; color:#555; margin-bottom:15px;">${item.set_name}</div>
-                                <div class="price-row">
-                                    <span class="label">市價行情</span><span class="val">${item.market_price}</span>
-                                </div>
-                                <div class="price-row">
-                                    <span class="label">PSA 10 參考</span><span class="val" style="color:var(--cyan)">${item.psa10}</span>
+                                <div style="font-weight:bold; margin-bottom:15px; font-size:16px;">${item.card_name}</div>
+                                <div class="price-box">
+                                    <div class="price-row"><span class="label">預估市價</span><span class="val">${item.market_price}</span></div>
+                                    <div class="price-row" style="margin-bottom:0; border-top:1px solid #222; padding-top:8px;">
+                                        <span class="label">PSA 10 參考</span><span class="val" style="color:var(--cyan); font-size:16px;">${item.psa10}</span>
+                                    </div>
                                 </div>
                             </div>`;
                     });
-                } else { grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#666;">找不到此編號，請嘗試 sv4k-014 格式</div>'; }
-            } catch (e) { grid.innerHTML = '連線超時，請稍後再試。'; }
+                } else { grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#666;">找不到編號，請確保格式正確 (如: sv4k-014)</div>'; }
+            } catch (e) { grid.innerHTML = '連線超時，請檢查 Render 狀態。'; }
         }
     </script>
 </body>
