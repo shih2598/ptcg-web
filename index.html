@@ -3,31 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PTCG 日版數據終端</title>
+    <title>PTCG 專業日版數據終端</title>
     <style>
-        :root { --gold: #ffcc00; --bg: #0d0d0d; --panel: #1a1a1a; --cyan: #00f2ff; }
+        :root { --gold: #ffcc00; --bg: #0a0a0a; --panel: #161616; --cyan: #00f2ff; }
         body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; padding: 15px; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .search-area { background: var(--panel); padding: 30px; border-radius: 20px; border: 1px solid #333; margin-bottom: 25px; text-align: center; }
-        .input-group { display: flex; gap: 10px; margin-top: 20px; }
-        input { flex: 1; padding: 15px; border-radius: 12px; border: 1px solid #444; background: #000; color: white; font-size: 18px; outline: none; }
-        button { background: var(--gold); border: none; padding: 0 30px; border-radius: 12px; font-weight: bold; cursor: pointer; }
-        .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
-        .card { background: var(--panel); border-radius: 20px; padding: 20px; border: 1px solid #222; }
-        .card-id { color: var(--cyan); font-family: monospace; font-weight: bold; margin-bottom: 10px; font-size: 14px; }
-        .card-img { width: 100%; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
-        .price-box { background: #000; padding: 15px; border-radius: 12px; }
-        .price-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
-        .label { color: #888; font-size: 12px; }
-        .val { font-weight: bold; color: var(--gold); font-size: 18px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .search-area { background: var(--panel); padding: 25px; border-radius: 20px; border: 1px solid #333; margin-bottom: 25px; }
+        .input-group { display: flex; gap: 10px; margin-top: 15px; }
+        input { flex: 1; padding: 15px; border-radius: 12px; border: 1px solid #444; background: #000; color: white; font-size: 16px; outline: none; }
+        button { background: var(--gold); border: none; padding: 0 25px; border-radius: 12px; font-weight: bold; cursor: pointer; }
+        .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+        .card { background: var(--panel); border-radius: 18px; padding: 15px; border: 1px solid #222; }
+        .card-img { width: 100%; border-radius: 10px; margin-bottom: 12px; }
+        .price-tag { background: #000; padding: 10px; border-radius: 10px; margin-top: 8px; }
+        .val { font-size: 18px; font-weight: 800; color: var(--gold); }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="search-area">
-            <div style="font-size: 11px; color: var(--cyan); letter-spacing: 2px;">JP VERSION / 專業日版數據模式</div>
+            <div style="font-size: 12px; color: var(--cyan); font-weight: bold;">📊 支援編號 (sv4k-014) 或 卡片名稱</div>
             <div class="input-group">
-                <input type="text" id="query" placeholder="輸入編號 (如: sv4k-014)">
+                <input type="text" id="query" placeholder="輸入搜尋內容..." onkeypress="if(event.keyCode==13) doSearch()">
                 <button onclick="doSearch()">分析行情</button>
             </div>
         </div>
@@ -35,31 +32,33 @@
     </div>
     <script>
         async function doSearch() {
-            const q = document.getElementById('query').value.trim();
+            const val = document.getElementById('query').value.trim();
             const grid = document.getElementById('result-grid');
-            if(!q) return;
-            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:var(--gold);">⚡ 正在連線日版資料庫...</div>';
+            if(!val) return;
+            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px;">⚡ 數據檢索中...</div>';
             try {
-                const res = await fetch(`https://ptcg-api-service.onrender.com/api/search?name=${encodeURIComponent(q)}`);
+                const res = await fetch(`https://ptcg-api-service.onrender.com/api/search?name=${encodeURIComponent(val)}`);
                 const data = await res.json();
                 grid.innerHTML = "";
                 if(data.status === "success" && data.data.length > 0) {
                     data.data.forEach(item => {
                         grid.innerHTML += `
                             <div class="card">
-                                <div class="card-id">${item.id}</div>
+                                <div style="font-size:10px; color:var(--cyan); margin-bottom:8px;">${item.id}</div>
                                 <img src="${item.image_url}" class="card-img">
-                                <div style="font-weight:bold; margin-bottom:15px; font-size:16px;">${item.card_name}</div>
-                                <div class="price-box">
-                                    <div class="price-row"><span class="label">預估市價</span><span class="val">${item.market_price}</span></div>
-                                    <div class="price-row" style="margin-bottom:0; border-top:1px solid #222; padding-top:8px;">
-                                        <span class="label">PSA 10 參考</span><span class="val" style="color:var(--cyan); font-size:16px;">${item.psa10}</span>
-                                    </div>
+                                <div style="font-weight:bold; font-size:14px; margin-bottom:10px; height:40px; overflow:hidden;">${item.card_name}</div>
+                                <div class="price-tag">
+                                    <span style="font-size:10px; color:#666;">預估市價</span>
+                                    <span class="val">${item.market_price}</span>
+                                </div>
+                                <div class="price-tag" style="border: 1px solid var(--cyan);">
+                                    <span style="font-size:10px; color:#666;">PSA 10 參考</span>
+                                    <span class="val" style="color:var(--cyan); font-size:16px;">${item.psa10}</span>
                                 </div>
                             </div>`;
                     });
-                } else { grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#666;">找不到編號，請確保格式正確 (如: sv4k-014)</div>'; }
-            } catch (e) { grid.innerHTML = '連線超時，請檢查 Render 狀態。'; }
+                } else { grid.innerHTML = '<div style="grid-column:1/-1; text-align:center;">找不到資料，請嘗試更精準的編號。</div>'; }
+            } catch (e) { grid.innerHTML = '伺服器連線失敗'; }
         }
     </script>
 </body>
